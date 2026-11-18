@@ -1,0 +1,14 @@
+# One-click hosting on Render (https://render.com). See README: "Put QLess online".
+services:
+  - type: web
+    name: qless
+    runtime: node
+    plan: free
+    buildCommand: node --version
+    startCommand: npm start
+    healthCheckPath: /api/auth/email-mode
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: TZ_NAME
+        value: Asia/Kolkata

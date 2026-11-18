@@ -1,0 +1,16 @@
+{
+  "name": "qless",
+  "version": "2.0.0",
+  "private": true,
+  "description": "QLess – college food court ordering with UPI payments and a live token queue",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/src/index.js",
+    "dev": "node scripts/dev.mjs",
+    "build": "cd client && npm install && node build.mjs",
+    "seed": "node --disable-warning=ExperimentalWarning server/src/seed.js --reset",
+    "test:api": "node scripts/api-smoke-test.mjs"
+  }
+}
