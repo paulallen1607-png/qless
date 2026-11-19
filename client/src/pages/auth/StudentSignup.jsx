@@ -8,15 +8,9 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { SECURITY_QUESTIONS } from '../../lib/constants.js';
 import { OtpBlock } from '../../components/Otp.jsx';
 
-const DEPTS = ['Computer Science', 'Information Technology', 'Electronics & Communication', 'Electrical', 'Mechanical', 'Civil', 'Biotechnology', 'MBA', 'Other'];
-
 function validate(f) {
   const e = {};
-  if (f.name.trim().length < 2) e.name = 'Enter your full name.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim())) e.email = 'Enter a valid college email.';
-  if (!/^[A-Za-z0-9-]{3,20}$/.test(f.student_id.trim())) e.student_id = '3–20 letters/numbers, e.g. 21CS045.';
-  if (!f.dept) e.dept = 'Pick your department.';
-  if (!f.year) e.year = 'Pick your year.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(f.email.trim())) e.email = 'Enter a valid email.';
   if (f.password.length < 8 || !/[A-Za-z]/.test(f.password) || !/\d/.test(f.password)) e.password = 'At least 8 characters with a letter and a number.';
   if (f.confirm !== f.password) e.confirm = "Passwords don't match.";
   if (!f.security_question) e.security_question = 'Pick a security question.';
@@ -25,7 +19,7 @@ function validate(f) {
 }
 
 export default function StudentSignup() {
-  const [f, setF] = useState({ name: '', email: '', student_id: '', dept: '', year: '', password: '', confirm: '', security_question: '', security_answer: '' });
+  const [f, setF] = useState({ email: '', password: '', confirm: '', security_question: '', security_answer: '' });
   const [fields, setFields] = useState({});
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -51,7 +45,7 @@ export default function StudentSignup() {
     setBusy(true);
     try {
       const { confirm, ...body } = f;
-      const d = await api('/auth/student/signup', { method: 'POST', body: { ...body, year: Number(body.year), otp } });
+      const d = await api('/auth/student/signup', { method: 'POST', body: { ...body, otp } });
       login(d.token, d.user);
       toast('Account created. Hungry? Let’s order!');
       nav('/student', { replace: true });
@@ -68,7 +62,7 @@ export default function StudentSignup() {
     <AuthShell
       badge={<RoleBadge />}
       title="Create account"
-      subtitle="Takes 30 seconds. Your details appear on your receipts."
+      subtitle="Just your email, a password and a security question."
       footer={
         <>
           Already have an account?{' '}
@@ -89,7 +83,7 @@ export default function StudentSignup() {
             </div>
             <OtpBlock
               autoSend
-              sendBody={{ purpose: 'signup', email: f.email, name: f.name }}
+              sendBody={{ purpose: 'signup', email: f.email }}
               value={otp}
               onChange={setOtp}
               error={fields.otp}
@@ -100,35 +94,9 @@ export default function StudentSignup() {
           </div>
         ) : (
           <>
-        <Field label="Full name" error={fields.name}>
-          <Input autoComplete="name" placeholder="Aarav Sharma" value={f.name} onChange={set('name')} error={fields.name} />
+        <Field label="Email" error={fields.email}>
+          <Input type="email" autoComplete="email" placeholder="you@skcet.ac.in" value={f.email} onChange={set('email')} error={fields.email} />
         </Field>
-        <Field label="College email" error={fields.email}>
-          <Input type="email" autoComplete="email" placeholder="you@college.edu" value={f.email} onChange={set('email')} error={fields.email} />
-        </Field>
-        <Field label="Student ID" error={fields.student_id}>
-          <Input placeholder="21CS045" value={f.student_id} onChange={set('student_id')} error={fields.student_id} className="uppercase" />
-        </Field>
-        <div className="grid grid-cols-[1fr_7rem] gap-3">
-          <Field label="Department" error={fields.dept}>
-            <Select value={f.dept} onChange={set('dept')} error={fields.dept}>
-              <option value="">Select…</option>
-              {DEPTS.map((d) => (
-                <option key={d}>{d}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Year" error={fields.year}>
-            <Select value={f.year} onChange={set('year')} error={fields.year}>
-              <option value="">—</option>
-              {[1, 2, 3, 4, 5].map((y) => (
-                <option key={y} value={y}>
-                  Year {y}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
         <Field label="Password" error={fields.password} hint="At least 8 characters with a letter and a number.">
           <Input type="password" autoComplete="new-password" value={f.password} onChange={set('password')} error={fields.password} />
         </Field>

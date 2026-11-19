@@ -156,7 +156,7 @@ export function serializeOrder(o, { withStudent = false, withQueue = false, sett
     };
   }
   if (withStudent) {
-    const u = one('SELECT name, student_id, email, dept, year FROM users WHERE id = ?', o.student_id);
+    const u = one('SELECT name, COALESCE(student_id, email) AS student_id, email, dept, year FROM users WHERE id = ?', o.student_id);
     out.student = u ? { ...u } : null;
   }
   if (withQueue) out.queue = queueInfo(o);

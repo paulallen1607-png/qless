@@ -33,22 +33,14 @@ const session = (user) => ({ token: signJwt({ sub: user.id, role: user.role }), 
 
 r.post('/api/auth/student/signup', (req) => {
   const b = req.body;
-  const name = str(b.name);
   const email = str(b.email).toLowerCase();
-  const studentId = str(b.student_id).toUpperCase();
-  const dept = str(b.dept);
-  const year = Number(b.year);
   const password = typeof b.password === 'string' ? b.password : '';
   const fields = {};
-  if (name.length < 2 || name.length > 60) fields.name = 'Enter your full name (2–60 characters).';
-  if (!RE.email.test(email)) fields.email = 'Enter a valid college email.';
+  if (!RE.email.test(email)) fields.email = 'Enter a valid email.';
   const domain = process.env.COLLEGE_EMAIL_DOMAIN;
   if (!fields.email && domain && !email.endsWith('@' + domain.toLowerCase())) {
     fields.email = `Use your @${domain} college email.`;
   }
-  if (!RE.studentId.test(studentId)) fields.student_id = 'Student ID should be 3–20 letters/numbers.';
-  if (dept.length < 2 || dept.length > 60) fields.dept = 'Enter your department.';
-  if (!Number.isInteger(year) || year < 1 || year > 6) fields.year = 'Pick your year (1–6).';
   if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
     fields.password = 'Use at least 8 characters with a letter and a number.';
   }
@@ -58,18 +50,22 @@ r.post('/api/auth/student/signup', (req) => {
   if (one('SELECT 1 FROM users WHERE email = ?', email)) {
     throw bad('An account with this email already exists. Try logging in.', { email: 'Already registered.' });
   }
-  if (one('SELECT 1 FROM users WHERE student_id = ?', studentId)) {
-    throw bad('This student ID is already registered.', { student_id: 'Already registered.' });
-  }
   useOtp('signup', email, b.otp);
   const info = run(
-    `INSERT INTO users (role, name, email, password_hash, student_id, dept, year, security_question, security_answer_hash, email_verified, created_at)
-     VALUES ('student', ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-    name, email, hashPassword(password), studentId, dept, year,
+    `INSERT INTO users (role, name, email, password_hash, security_question, security_answer_hash, email_verified, created_at)
+     VALUES ('student', ?, ?, ?, ?, ?, 1, ?)`,
+    nameFromEmail(email), email, hashPassword(password),
     b.security_question, hashPassword(normAnswer(b.security_answer)), Date.now()
   );
   return session(one('SELECT * FROM users WHERE id = ?', info.lastInsertRowid));
 });
+
+/** "ravi.kumar22@skcet.ac.in" -> "Ravi Kumar" (shown on receipts and the staff board). */
+function nameFromEmail(email) {
+  const words = email.split('@')[0].replace(/[\d_]+/g, ' ').split(/[.\-\s]+/).filter(Boolean);
+  const name = words.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ').slice(0, 60).trim();
+  return name.length >= 2 ? name : email.split('@')[0].slice(0, 60);
+}
 
 r.post('/api/auth/student/login', (req) => {
   const email = str(req.body.email).toLowerCase();
@@ -174,10 +170,9 @@ function noteResetFailure(u) {
 }
 function findStudentFor(b) {
   const email = str(b.email).toLowerCase();
-  const sid = str(b.student_id).toUpperCase();
-  if (!email || !sid) throw bad('Enter your college email and student ID.');
-  const u = one("SELECT * FROM users WHERE role = 'student' AND email = ? AND student_id = ?", email, sid);
-  if (!u) throw bad("That email and student ID don't match any account.", { student_id: 'Check your email and student ID.' });
+  if (!email) throw bad('Enter your email.', { email: 'Enter your email.' });
+  const u = one("SELECT * FROM users WHERE role = 'student' AND email = ?", email);
+  if (!u) throw bad('No account uses this email. Check it, or create an account.', { email: 'No account with this email.' });
   return u;
 }
 
@@ -196,7 +191,7 @@ r.post('/api/auth/otp/send', async (req) => {
   if (!RE.email.test(email)) throw bad('Enter a valid college email.', { email: 'Invalid email.' });
   if (purpose === 'signup') {
     if (one('SELECT 1 FROM users WHERE email = ?', email)) throw bad('An account with this email already exists. Try logging in.', { email: 'Already registered.' });
-    return { ...(await issueOtp('signup', email, str(b.name))), to: maskEmail(email) };
+    return { ...(await issueOtp('signup', email, str(b.name) || nameFromEmail(email))), to: maskEmail(email) };
   }
   const u = findStudentFor(b);
   checkLock(u);
@@ -254,7 +249,7 @@ r.post('/api/auth/student/reset', (req) => {
      WHERE id = ?`,
     hashPassword(b.new_password), u.id
   );
-  logActivity('settings', `${u.student_id} reset their password (${{ code: 'staff code', email: 'email code', answer: 'security question' }[method]})`);
+  logActivity('settings', `${u.student_id || u.email} reset their password (${{ code: 'staff code', email: 'email code', answer: 'security question' }[method]})`);
   return { ok: true };
 });
 
@@ -572,8 +567,8 @@ r.post('/api/staff/reset-code', staff, (req) => {
   const code = sixDigits();
   const expires = Date.now() + 15 * 60000;
   run('UPDATE users SET reset_code_hash = ?, reset_code_expires = ?, reset_fail_count = 0, reset_fail_first = NULL WHERE id = ?', hashPassword(code), expires, u.id);
-  logActivity('settings', `${req.user.name} issued a password reset code to ${u.student_id}`);
-  return { ok: true, code, expires, name: u.name, student_id: u.student_id };
+  logActivity('settings', `${req.user.name} issued a password reset code to ${u.student_id || u.email}`);
+  return { ok: true, code, expires, name: u.name, student_id: u.student_id || u.email };
 });
 
 // =====================================================================

@@ -32,7 +32,7 @@ const su = await call('/auth/student/signup', {
   method: 'POST',
   body: { name: 'Test', email: 'bad', student_id: '!', dept: '', year: 9, password: 'short' },
 });
-ok(su.status === 400 && Object.keys(su.data.fields).length === 6, 'signup validation returns field errors (incl. security question)');
+ok(su.status === 400 && Object.keys(su.data.fields).length === 3, 'signup validation: email, password, security question');
 const priyaEmail = `priya${Date.now()}@college.edu`;
 const priyaBody = { name: 'Priya Nair', email: priyaEmail, student_id: 'EC' + (Date.now() % 100000), dept: 'ECE', year: 2, password: 'priya1234',
   security_question: 'In which city were you born?', security_answer: 'Coimbatore' };
@@ -126,7 +126,7 @@ ok(rep.data.total_revenue === 85 && rep.data.rejected_orders === 1, 'daily repor
 // ---- password reset & account security ----
 const fp = await call('/auth/student/forgot', { method: 'POST', body: { email: 'aarav@college.edu', student_id: '21cs045' } });
 ok(fp.data.security_question === 'What is your favourite canteen dish?', 'forgot: shows the security question');
-ok((await call('/auth/student/forgot', { method: 'POST', body: { email: 'aarav@college.edu', student_id: 'XX' } })).status === 400, 'forgot: wrong student ID refused');
+ok((await call('/auth/student/forgot', { method: 'POST', body: { email: 'nobody@college.edu' } })).status === 400, 'forgot: unknown email refused');
 const badAns = await call('/auth/student/reset', { method: 'POST', body: { email: 'aarav@college.edu', student_id: '21CS045', method: 'answer', answer: 'pizza', new_password: 'hacked123' } });
 ok(badAns.status === 400 && badAns.data.error.includes('4 attempts left'), 'reset: wrong answer refused');
 ok((await call('/auth/student/login', { method: 'POST', body: { email: 'aarav@college.edu', password: 'student123' } })).status === 200, 'password unchanged after wrong answer');

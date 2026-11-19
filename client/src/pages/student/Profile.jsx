@@ -22,11 +22,11 @@ export default function StudentProfile() {
   const paid = (data?.orders || []).filter((o) => o.payment_status === 'verified');
 
   const rows = [
-    ['College email', `${user.email}${me.email_verified ? '  ✓ verified' : ''}`],
-    ['Student ID', user.student_id],
-    ['Department', user.dept],
-    ['Year', `Year ${user.year}`],
-  ];
+    ['Email', `${user.email}${me.email_verified ? '  ✓ verified' : ''}`],
+    user.student_id && ['Student ID', user.student_id],
+    user.dept && ['Department', user.dept],
+    user.year && ['Year', `Year ${user.year}`],
+  ].filter(Boolean);
 
   return (
     <>
@@ -36,7 +36,7 @@ export default function StudentProfile() {
           <div className="grid h-16 w-16 place-items-center rounded-3xl bg-lime font-display text-2xl font-bold text-bg">{initials(user.name)}</div>
           <div>
             <div className="font-display text-xl font-semibold">{user.name}</div>
-            <div className="text-sm text-muted">Student · {user.student_id}</div>
+            <div className="text-sm text-muted">Student{user.student_id ? ` · ${user.student_id}` : ''}</div>
           </div>
         </Card>
         <div className="grid grid-cols-2 gap-3">
