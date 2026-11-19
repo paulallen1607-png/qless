@@ -48,8 +48,8 @@ function CollegeIntro({ onDone }) {
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const t1 = setTimeout(() => setLeaving(true), reduce ? 900 : 3300);
-    const t2 = setTimeout(onDone, reduce ? 1200 : 3900);
+    const t1 = setTimeout(() => setLeaving(true), reduce ? 1200 : 4300);
+    const t2 = setTimeout(onDone, reduce ? 1500 : 4900);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -60,7 +60,7 @@ function CollegeIntro({ onDone }) {
     <button
       type="button"
       onClick={onDone}
-      aria-label={`${COLLEGE} presents QLess. Tap to skip.`}
+      aria-label={`${COLLEGE} presents QLess, crafted by Team InnovateX. Tap to skip.`}
       className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg px-8 text-center ${leaving ? 'intro-out' : ''}`}
     >
       <span className="intro-glow pointer-events-none absolute h-72 w-72 rounded-full bg-lime/15 blur-3xl" aria-hidden="true" />
@@ -81,6 +81,14 @@ function CollegeIntro({ onDone }) {
       </span>
       <span className="intro-word relative mt-2 block" style={delay(2.0)}>
         <Logo size="text-4xl" />
+      </span>
+      <span className="intro-word relative mt-7 block" style={delay(2.55)}>
+        <span className="border-flow block rounded-full p-[1.5px]">
+          <span className="flex items-center gap-2 rounded-full bg-bg px-5 py-2.5">
+            <span className="text-xs text-muted">Crafted by Team</span>
+            <span className="text-shimmer font-display text-lg font-bold tracking-wide">InnovateX</span>
+          </span>
+        </span>
       </span>
       <span className="absolute bottom-8 text-[11px] text-muted/70">Tap to skip</span>
     </button>
