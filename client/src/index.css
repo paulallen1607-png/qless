@@ -40,6 +40,33 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .animate-toast { animation: toast-in .22s ease-out; }
 .animate-ring { animation: pulse-ring 1.6s ease-out infinite; }
 
+/* Welcome page */
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes drift { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(18px, -14px) scale(1.12); } }
+@keyframes shimmer { from { background-position: 200% 50%; } to { background-position: -200% 50%; } }
+@keyframes border-flow { from { background-position: 0% 50%; } to { background-position: 300% 50%; } }
+@keyframes blink-dot { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.animate-rise { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+.animate-float { animation: float-y 4s ease-in-out infinite; }
+.animate-drift { animation: drift 9s ease-in-out infinite; }
+.animate-drift-slow { animation: drift 13s ease-in-out infinite reverse; }
+.animate-blink { animation: blink-dot 1.4s ease-in-out infinite; }
+.text-shimmer {
+  background: linear-gradient(90deg, #C6FF4D 0%, #F4F5EF 25%, #C6FF4D 50%, #9AA6FF 75%, #C6FF4D 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 6s linear infinite;
+}
+.border-flow {
+  background: linear-gradient(90deg, #C6FF4D, #9AA6FF, #C6FF4D, #9AA6FF, #C6FF4D);
+  background-size: 300% 100%;
+  animation: border-flow 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise, .animate-float, .animate-drift, .animate-drift-slow, .animate-blink, .text-shimmer, .border-flow { animation: none; }
+}
+
 /* ---------- Printable documents ---------- */
 .paper {
   background: #fff;
