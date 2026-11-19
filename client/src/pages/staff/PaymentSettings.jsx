@@ -63,6 +63,7 @@ export default function PaymentSettings() {
             <Icon name="wallet" className="mt-0.5 h-5 w-5 shrink-0 text-peri" />
             <p className="text-muted">
               Every student payment link and QR uses the UPI ID saved here. Changes apply to new orders immediately.
+              Tip: use a <b>business / merchant UPI ID</b> (free from GPay for Business, PhonePe Business or Paytm Business). Some UPI apps block or limit link and QR payments to personal UPI IDs.
             </p>
           </Card>
           <Field label="Canteen UPI ID" error={fields.upi_id || (f.upi_id && !upiValid ? 'Format: name@bank' : null)} hint="e.g. qlesscanteen@okaxis, 9876543210@ybl">

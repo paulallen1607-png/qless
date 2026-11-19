@@ -100,8 +100,8 @@ export default function Pay() {
         <p className="-mt-2 text-center text-xs text-muted">Opens GPay, PhonePe, Paytm or any UPI app on your phone</p>
 
         <Card>
-          <div className="text-sm font-medium">App didn't open? Pay manually</div>
-          <p className="mt-1 text-xs text-muted">Open any UPI app → “Pay to UPI ID” → paste the ID and amount below.</p>
+          <div className="text-sm font-medium">App didn't open, or it says “limit exceeded”? Pay manually</div>
+          <p className="mt-1 text-xs text-muted">Some UPI apps block payment links to personal UPI IDs. Open GPay / PhonePe / Paytm yourself → “Pay to UPI ID” (or Pay contacts) → paste the ID and amount below. This normal payment usually works.</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               type="button"
