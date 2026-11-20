@@ -21,7 +21,8 @@ export const DEMO = {
     { staff_id: 'STAFF01', password: '1234', name: 'Ravi Kumar' },
     { staff_id: 'STAFF02', password: 'kitchen99', name: 'Meena S' },
   ],
-  upi_id: 'qlesscanteen@okaxis',
+  // The canteen's UPI ID: student payments go straight to it. Override with CANTEEN_UPI_ID.
+  upi_id: (process.env.CANTEEN_UPI_ID || '9344645714@ybl').trim(),
 };
 
 const MENU = [
@@ -60,6 +61,16 @@ function rng(seed) {
   return () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
 }
 
+/** Older databases still hold the sample UPI ID: switch them to the real one. */
+export function fixSampleUpi() {
+  const s = one('SELECT upi_id, college_name FROM settings WHERE id = 1');
+  if (!s) return;
+  if (!s.upi_id || s.upi_id === 'qlesscanteen@okaxis') run('UPDATE settings SET upi_id = ? WHERE id = 1', DEMO.upi_id);
+  if (s.college_name === 'Sunrise College of Engineering') {
+    run('UPDATE settings SET college_name = ? WHERE id = 1', 'Sri Krishna College of Engineering and Technology');
+  }
+}
+
 export function seed({ history = true } = {}) {
   if (one('SELECT COUNT(*) AS n FROM users').n > 0) return false;
   const now = Date.now();
@@ -67,7 +78,7 @@ export function seed({ history = true } = {}) {
   run(
     `INSERT INTO settings (id, canteen_name, college_name, upi_id, accepting_orders) VALUES (1, ?, ?, ?, 1)
      ON CONFLICT(id) DO NOTHING`,
-    'QLess Food Court', 'Sunrise College of Engineering', DEMO.upi_id
+    'QLess Food Court', 'Sri Krishna College of Engineering and Technology', DEMO.upi_id
   );
 
   run(

@@ -62,7 +62,7 @@ await call('/staff/accepting', { method: 'POST', token: T, body: { accepting: tr
 const o1 = await call('/orders', { method: 'POST', token: S, body: { items: [{ id: chai.id, qty: 2 }, { id: brownie.id, qty: 1 }], note: 'less sugar' } });
 ok(o1.status === 200 && o1.data.order.token === 1, 'order created with token 1 (daily reset)');
 ok(o1.data.order.total === 85, 'total computed server-side (2×15 + 55)');
-ok(o1.data.order.upi.link === 'upi://pay?pa=qlesscanteen@okaxis&pn=QLess%20Food%20Court&am=85.00&cu=INR&tn=QLess%20Order%201', 'UPI link uses saved UPI id');
+ok(o1.data.order.upi.link === 'upi://pay?pa=9344645714@ybl&pn=QLess%20Food%20Court&am=85.00&cu=INR&tn=QLess%20Order%201', 'UPI link uses saved UPI id');
 const id1 = o1.data.order.id;
 ok((await call('/menu', { token: S })).data.items.find((i) => i.id === brownie.id).stock === 19, 'stock reserved');
 
@@ -104,7 +104,7 @@ ok((await call('/staff/settings', { method: 'PUT', token: T, body: { upi_id: 'ne
 const o3 = await call('/orders', { method: 'POST', token: S, body: { items: [{ id: chai.id, qty: 1 }] } });
 ok(o3.data.order.upi.link.includes('pa=newcanteen@ybl'), 'new orders pay to the updated UPI id');
 ok((await call(`/orders/${o3.data.order.id}/cancel`, { method: 'POST', token: S })).status === 200, 'cancel unpaid order');
-await call('/staff/settings', { method: 'PUT', token: T, body: { upi_id: 'qlesscanteen@okaxis', canteen_name: 'QLess Food Court', college_name: 'Sunrise College of Engineering' } });
+await call('/staff/settings', { method: 'PUT', token: T, body: { upi_id: '9344645714@ybl', canteen_name: 'QLess Food Court', college_name: 'Sunrise College of Engineering' } });
 
 // Menu management
 const add = await call('/staff/menu', { method: 'POST', token: T, body: { name: 'Vada Pav', price: 25, category: 'Snacks', veg: true, prep_time: 3, daily_stock: 1, description: 'Mumbai style' } });

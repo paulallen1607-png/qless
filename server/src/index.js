@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { ROOT, UPLOAD_DIR } from './db.js';
 import { sendJson, readJson, serveStatic } from './http.js';
-import { seed } from './seed.js';
+import { seed, fixSampleUpi } from './seed.js';
 import { expireStaleDrafts } from './services.js';
 import router from './routes.js';
 
@@ -12,6 +12,7 @@ const PORT = Number(process.env.PORT || 4000);
 const CLIENT_DIST = path.resolve(ROOT, '../client/dist');
 
 if (seed()) console.log('First run: demo data seeded (see README for logins).');
+fixSampleUpi();
 setInterval(() => {
   try {
     expireStaleDrafts();

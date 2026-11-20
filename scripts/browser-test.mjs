@@ -119,7 +119,7 @@ try {
   const link = A.locator('a', { hasText: 'Pay with UPI' });
   await link.waitFor({ timeout: T });
   const href = await link.getAttribute('href');
-  if (!href.startsWith('upi://pay?pa=qlesscanteen@okaxis&pn=QLess%20Food%20Court&am=55.00&cu=INR&tn=QLess%20Order%201')) throw new Error('bad UPI link ' + href);
+  if (!href.startsWith('upi://pay?pa=9344645714@ybl&pn=QLess%20Food%20Court&am=55.00&cu=INR&tn=QLess%20Order%201')) throw new Error('bad UPI link ' + href);
   if ((await link.getAttribute('target')) !== null) throw new Error('UPI link must open the app directly');
   ok('UPI link correct (₹55, token #1) and opens the UPI app directly');
   await A.getByRole('button', { name: /Copy UPI ID/ }).click();
