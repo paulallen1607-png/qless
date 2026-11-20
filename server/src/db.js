@@ -116,6 +116,10 @@ CREATE TABLE IF NOT EXISTS otps (
   ];
   for (const [col, type] of add) if (!have.has(col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} ${type}`);
 }
+{
+  const have = new Set(db.prepare('PRAGMA table_info(orders)').all().map((c) => c.name));
+  for (const col of ['rzp_order_id', 'rzp_payment_id']) if (!have.has(col)) db.exec(`ALTER TABLE orders ADD COLUMN ${col} TEXT`);
+}
 
 /** Run fn inside a write transaction. */
 export function tx(fn) {

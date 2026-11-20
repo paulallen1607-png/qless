@@ -13,6 +13,7 @@ import {
 } from './util.js';
 import crypto from 'node:crypto';
 import { sendOtpEmail, emailConfigured } from './email.js';
+import { razorpayConfigured, razorpayKeyId, razorpayTestMode, createRazorpayOrder, verifyRazorpaySignature } from './razorpay.js';
 
 const r = createRouter();
 const student = requireRole('student');
@@ -302,7 +303,7 @@ r.get('/api/menu', anyone, () => ({ items: listMenu(), categories: CATEGORIES })
 r.post('/api/orders', student, (req) => {
   const s = getSettings();
   if (!s.accepting_orders) throw new HttpError(409, 'The canteen is not taking orders right now. Please try again shortly.');
-  if (!RE.upiId.test(s.upi_id || '')) throw new HttpError(409, 'Online payment is not set up yet. Please ask the counter.');
+  if (!RE.upiId.test(s.upi_id || '') && !razorpayConfigured()) throw new HttpError(409, 'Online payment is not set up yet. Please ask the counter.');
 
   const lines = Array.isArray(req.body.items) ? req.body.items : [];
   const note = str(req.body.note);
@@ -422,7 +423,60 @@ r.get('/api/orders/:id', anyone, (req) => {
   return {
     order: serializeOrder(o, { withQueue: true, withStudent: true }),
     canteen: { canteen_name: getSettings().canteen_name, college_name: getSettings().college_name },
+    online_pay: razorpayConfigured() ? { provider: 'razorpay', test_mode: razorpayTestMode() } : null,
+    upi_ready: RE.upiId.test(getSettings().upi_id || ''),
   };
+});
+
+// ---- Razorpay (online payment, confirmed automatically) ----
+r.post('/api/orders/:id/razorpay', student, async (req) => {
+  if (!razorpayConfigured()) throw new HttpError(409, 'Online card/UPI checkout is not set up. Please pay by UPI.');
+  const o = ownOrder(req);
+  if (o.status !== 'awaiting_payment') throw new HttpError(409, 'This order is no longer waiting for payment.');
+  let rzpId = o.rzp_order_id;
+  if (!rzpId) {
+    const created = await createRazorpayOrder({
+      amountRupees: o.total,
+      receipt: `qless_${o.id}`,
+      notes: { qless_order: String(o.id), token: String(o.token) },
+    });
+    rzpId = created.id;
+    run('UPDATE orders SET rzp_order_id = ?, updated_at = ? WHERE id = ?', rzpId, Date.now(), o.id);
+  }
+  const s = getSettings();
+  return {
+    key_id: razorpayKeyId(),
+    rzp_order_id: rzpId,
+    amount: Math.round(o.total * 100),
+    currency: 'INR',
+    name: s.canteen_name || 'QLess',
+    description: `QLess order #${o.token}`,
+    prefill: { name: req.user.name, email: req.user.email },
+    test_mode: razorpayTestMode(),
+  };
+});
+
+r.post('/api/orders/:id/razorpay/verify', student, (req) => {
+  const o = ownOrder(req);
+  const b = req.body;
+  if (o.status !== 'awaiting_payment') {
+    if (o.rzp_payment_id && o.rzp_payment_id === b.razorpay_payment_id) {
+      return { order: serializeOrder(o, { withQueue: true }) }; // already recorded
+    }
+    throw new HttpError(409, 'This order is no longer waiting for payment.');
+  }
+  if (!o.rzp_order_id || b.razorpay_order_id !== o.rzp_order_id) throw bad('This payment does not belong to this order.');
+  if (!verifyRazorpaySignature(o.rzp_order_id, b.razorpay_payment_id, b.razorpay_signature)) {
+    throw bad('We could not confirm this payment. If money was taken, show the payment ID at the counter.');
+  }
+  const now = Date.now();
+  run(
+    `UPDATE orders SET status = 'confirmed', payment_status = 'verified', rzp_payment_id = ?, upi_ref = ?,
+       paid_at = ?, confirmed_at = ?, updated_at = ? WHERE id = ?`,
+    b.razorpay_payment_id, b.razorpay_payment_id, now, now, now, o.id
+  );
+  logActivity('payment', `Order #${o.token} paid online · ₹${o.total} (Razorpay${razorpayTestMode() ? ' test' : ''})`);
+  return { order: serializeOrder(one('SELECT * FROM orders WHERE id = ?', o.id), { withQueue: true }) };
 });
 
 // =====================================================================

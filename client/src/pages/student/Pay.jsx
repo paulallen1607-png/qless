@@ -10,6 +10,24 @@ import { Icon } from '../../components/Icon.jsx';
 
 const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+let rzpLoading = null;
+function loadRazorpay() {
+  if (window.Razorpay) return Promise.resolve();
+  if (!rzpLoading) {
+    rzpLoading = new Promise((resolve, reject) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      sc.onload = () => resolve();
+      sc.onerror = () => {
+        rzpLoading = null;
+        reject(new Error('Could not load Razorpay. Check your internet and try again.'));
+      };
+      document.head.appendChild(sc);
+    });
+  }
+  return rzpLoading;
+}
+
 export default function Pay() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -24,12 +42,19 @@ export default function Pay() {
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [online, setOnline] = useState(null); // { provider, test_mode } when Razorpay is set up
+  const [upiReady, setUpiReady] = useState(true);
+  const [rzpBusy, setRzpBusy] = useState(false);
 
   useEffect(() => {
     api(`/orders/${id}`)
       .then((d) => {
         if (d.order.status !== 'awaiting_payment') nav(`/student/orders/${id}`, { replace: true });
-        else setOrder(d.order);
+        else {
+          setOrder(d.order);
+          setOnline(d.online_pay || null);
+          setUpiReady(d.upi_ready !== false);
+        }
       })
       .catch(setLoadErr);
   }, [id, nav]);
@@ -62,6 +87,43 @@ export default function Pay() {
     }
   }
 
+  async function payOnline() {
+    setRzpBusy(true);
+    try {
+      await loadRazorpay();
+      const o = await api(`/orders/${id}/razorpay`, { method: 'POST' });
+      const rzp = new window.Razorpay({
+        key: o.key_id,
+        order_id: o.rzp_order_id,
+        amount: o.amount,
+        currency: o.currency,
+        name: o.name,
+        description: o.description,
+        prefill: o.prefill,
+        theme: { color: '#C6FF4D' },
+        modal: { ondismiss: () => setRzpBusy(false) },
+        handler: async (resp) => {
+          try {
+            await api(`/orders/${id}/razorpay/verify`, { method: 'POST', body: resp });
+            active.refresh();
+            toast(`Paid! Order #${order.token} is confirmed and sent to the kitchen.`);
+            nav(`/student/orders/${id}`, { replace: true });
+          } catch (x) {
+            toast(x.message, 'error');
+            setRzpBusy(false);
+          }
+        },
+      });
+      rzp.on('payment.failed', (r) => {
+        toast(r?.error?.description || 'Payment failed. Please try again.', 'error');
+      });
+      rzp.open();
+    } catch (x) {
+      toast(x.message, 'error');
+      setRzpBusy(false);
+    }
+  }
+
   async function cancel() {
     try {
       await api(`/orders/${id}/cancel`, { method: 'POST' });
@@ -79,22 +141,52 @@ export default function Pay() {
   const upi = order.upi;
   return (
     <>
-      <TopBar title="Pay with UPI" back="/student" subtitle={`Token #${order.token} reserved`} />
+      <TopBar title={online ? 'Payment' : 'Pay with UPI'} back="/student" subtitle={`Token #${order.token} reserved`} />
       <div className="space-y-4 px-4 pt-4">
         <Card className="text-center">
           <div className="text-xs font-semibold uppercase tracking-wider text-muted">Amount to pay</div>
           <div className="mt-1 font-display text-5xl font-bold">{rupees(order.total)}</div>
-          <div className="mx-auto mt-3 flex max-w-full items-center gap-3 rounded-2xl bg-surface2 px-4 py-2 text-left">
+          {upiReady && <div className="mx-auto mt-3 flex max-w-full items-center gap-3 rounded-2xl bg-surface2 px-4 py-2 text-left">
             <Icon name="store" className="h-5 w-5 shrink-0 text-lime" />
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold">{upi.payee_name}</span>
               <span className="block break-all font-mono text-xs text-muted">{upi.upi_id}</span>
             </span>
-          </div>
-          <div className="mt-2 text-xs text-muted">Note on payment: QLess Order {order.token}</div>
+          </div>}
+          {upiReady && <div className="mt-2 text-xs text-muted">Note on payment: QLess Order {order.token}</div>}
         </Card>
 
-        <a href={upi.link} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime text-lg font-semibold text-bg hover:brightness-105">
+        {online && (
+          <>
+            <button
+              type="button"
+              onClick={payOnline}
+              disabled={rzpBusy}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-lime text-lg font-semibold text-bg hover:brightness-105 disabled:opacity-60"
+            >
+              <Icon name="zap" className="h-5 w-5" /> {rzpBusy ? 'Opening payment…' : `Pay ${rupees(order.total)} online`}
+            </button>
+            <p className="-mt-2 text-center text-xs text-muted">
+              UPI, cards or net banking via Razorpay · confirmed instantly, no waiting for staff
+              {online.test_mode && (
+                <span className="mt-2 block rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-left text-warn">
+                  <b>Test mode:</b> no real money moves. Choose UPI and enter <b className="font-mono">success@razorpay</b> (or a test card shown by Razorpay).
+                </span>
+              )}
+            </p>
+            {upiReady && (
+              <div className="flex items-center gap-3 py-1 text-xs text-muted">
+                <span className="h-px flex-1 bg-stroke" /> or pay directly by UPI <span className="h-px flex-1 bg-stroke" />
+              </div>
+            )}
+          </>
+        )}
+
+        {upiReady && (<>
+        <a
+          href={upi.link}
+          className={`flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-lg font-semibold hover:brightness-105 ${online ? 'border border-stroke bg-surface2 text-ink' : 'bg-lime text-bg'}`}
+        >
           <Icon name="zap" className="h-5 w-5" /> Pay with UPI
         </a>
         <p className="-mt-2 text-center text-xs text-muted">Opens GPay, PhonePe, Paytm or any UPI app on your phone</p>
@@ -149,6 +241,7 @@ export default function Pay() {
         <Button variant="peri" size="lg" className="w-full" onClick={() => setSheet(true)}>
           <Icon name="check" /> I've paid
         </Button>
+        </>)}
         <button onClick={() => setCancelOpen(true)} className="block w-full py-2 text-center text-sm text-muted hover:text-bad">
           Cancel this order
         </button>
